@@ -45,7 +45,7 @@ export const getIdOfOwner = async (objects: any): Promise<string> => {
 };
 
 export const checkDraftPresent = async (
-  req:any,
+  req: any,
   codeToBeChecked: string,
   ownerId: string
 ) => {

@@ -1,5 +1,9 @@
 import { Response } from "express";
-import FormSchema, { FormCode, updateFormSchema } from "../models/FormSchema";
+import FormSchema, {
+  FormCode,
+  updateFormSchema,
+  shareSchema,
+} from "../models/FormSchema";
 import Form, { Flow, JsonSchema, formRole } from "../interfaces/form";
 import {
   GetForm,
@@ -7,6 +11,7 @@ import {
   checkFormCode,
   getIdOfOwner,
 } from "../Utils/formUtils";
+import { sendEmail } from "../Utils/userUtils";
 
 exports.createForm = async (req: any, res: Response) => {
   const form: Form = req.body;
@@ -247,6 +252,62 @@ exports.SearchFormWithCodeAndVersion = async (req: any, res: Response) => {
     return;
   } else {
     res.status(404).json({ error: "there is no form present" });
+    return;
+  }
+};
+
+exports.shareForm = async (req: any, res: Response) => {
+  const { formsContainer } = req.cosmos;
+  const { id, owner } = req.user;
+  const formId: string = req.params.formId;
+  const shareWith: formRole = req.body;
+  const { error } = shareSchema.validate(shareWith);
+  if (error) {
+    res.status(404).json({ error: error.message });
+  }
+  const querySpec = {
+    query:
+      "SELECT f.id, f.jsonSchema,f.roles,f.formName,f.formCode,f.version,f.status,f.department,f.ReferenceNumber,f.reactFlow FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND o.role = @role AND f.id = @formId",
+    parameters: [
+      {
+        name: "@ownerId",
+        value: id,
+      },
+      {
+        name: "@formId",
+        value: formId,
+      },
+      {
+        name: "@role",
+        value: "owner",
+      },
+    ],
+  };
+
+  const { resources } = await formsContainer.items.query(querySpec).fetchAll();
+
+  if (resources.length > 0) {
+    const form: Form = resources[0];
+    let newID: string = shareWith.id;
+    let roles: formRole[] = [];
+    roles = form.roles!;
+    roles.forEach((owner) => {
+      if (owner.id === newID) {
+        res
+          .status(404)
+          .json({ error: "Form is already shared with this User" });
+      }
+      return;
+    });
+    roles.push(shareWith);
+    form.roles = roles;
+    await formsContainer.item(form.id, form.id).replace(form);
+    await sendEmail(
+      shareWith.email,
+      owner.email,
+      `${owner.email} has shared form with ${shareWith.email}`
+    );
+    res.status(200).json({ form });
     return;
   }
 };

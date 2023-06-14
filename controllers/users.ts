@@ -6,6 +6,7 @@ import {
   findByEmail,
   GiveTokens,
   updateRtHash,
+  getUser,
 } from "../Utils/userUtils";
 import * as bcrypt from "bcryptjs";
 import Tokens, { UserToken } from "../interfaces/Tokens";
@@ -64,7 +65,7 @@ exports.signIn = async (req: Request, res: Response) => {
   };
   const { accessToken, refreshToken }: Tokens = await GiveTokens(user);
   const id: string = singleUser.id ?? "";
-  const {resource}=await updateRtHash(req, id, user.email, refreshToken);
+  const { resource } = await updateRtHash(req, id, user.email, refreshToken);
   res
     .status(200)
     .json({ user: user, accessToken: accessToken, refreshToken: refreshToken });
@@ -130,40 +131,40 @@ exports.getAllUsersOfDepartment = async (req: any, res: Response) => {
 
 exports.RefreshTokens = async (req: any, res: Response) => {
   const { rt, id } = req.user;
-  const { usersContainer } = req.cosmos;
-  const querySpec = {
-    query: "SELECT * FROM c WHERE c.id = @id",
-    parameters: [
-      {
-        name: "@id",
-        value: id,
-      },
-    ],
-  };
 
-  const { resources } = await usersContainer.items.query(querySpec).fetchAll();
-
-  if (resources.length > 0) {
-    const user = resources[0];
-    const userToken: UserToken = {
-      name: user.name,
-      email: user.email,
-      department: user.department,
-      role: user.role,
-      id: user.id,
-    };
-    const rtMatches: boolean | void = await bcrypt.compare(rt, user.hashedRt);
-    if (!rtMatches) {
-      res.status(404).json({ response: "user does not exists" });
-      return;
-    }
-    const { accessToken, refreshToken } = await GiveTokens(userToken);
-    res
-      .status(200)
-      .json({ accessToken: accessToken, refreshToken: refreshToken });
-    return;
-  } else {
-    res.status(404).json({ error: "No User Found" });
+  const user = await getUser(req, res, id);
+  if (!user) {
+    res.status(404).json({ response: "User Not Found" });
     return;
   }
+  const userToken: UserToken = {
+    name: user.name,
+    email: user.email,
+    department: user.department,
+    role: user.role,
+    id: user.id,
+  };
+  const rtMatches: boolean | void = await bcrypt.compare(rt, user.hashedRt);
+  if (!rtMatches) {
+    res.status(404).json({ response: "user does not exists" });
+    return;
+  }
+  const { accessToken, refreshToken } = await GiveTokens(userToken);
+  res
+    .status(200)
+    .json({ accessToken: accessToken, refreshToken: refreshToken });
+  return;
+};
+
+exports.deleteUser = async (req: any, res: Response) => {
+  const UserToBeDeleted: string = req.params.userId;
+  const { usersContainer } = req.cosmos;
+  const singleUser: User = await getUser(req, res, UserToBeDeleted);
+  if (!singleUser) {
+    res.status(404).json({ response: "User Not Found" });
+    return;
+  }
+  await usersContainer.item(singleUser.id, singleUser.email).delete();
+  res.status(200).json({ response: `${singleUser.name} User Deleted` });
+  return;
 };

@@ -7,6 +7,7 @@ const {
   editFlow,
   getLatestForms,
   SearchFormWithCodeAndVersion,
+  shareForm,
 } = require("../controllers/forms");
 import { authenticateUserMiddleware } from "../middlewares/authUser";
 import { validateUserRole } from "../middlewares/validateUserRole";
@@ -36,4 +37,7 @@ formRoutes
 formRoutes
   .route("/editFlow/:formId")
   .put(authenticateUserMiddleware, validateUserRole, editFlow);
+formRoutes
+  .route("/shareForm/:formId")
+  .put(authenticateUserMiddleware, validateUserRole, shareForm);
 export default formRoutes;
