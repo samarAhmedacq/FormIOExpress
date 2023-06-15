@@ -4,6 +4,7 @@ import { GetForm } from "../Utils/formUtils";
 import submissionRequests from "../interfaces/submissionRequests";
 import submission from "../interfaces/submissions";
 import {
+  getSubmission,
   updateCurrentNodeData,
   updateNextOrPrevNodeProperties,
 } from "../Utils/requestUtils";
@@ -62,4 +63,58 @@ exports.createRequest = async (req: any, res: Response) => {
     .status(201)
     .json({ response: "request created", createdSubmissionRequest });
   return;
+};
+
+exports.getRequests = async (req: any, res: any) => {
+  const { id, email } = req.user;
+  const { submissionRequestsContainer } = req.cosmos;
+
+  try {
+    const querySpec = {
+      query:
+        "SELECT c.id, c.formId, c.version, c.reactFlow, c.SubmittedBy, c.flowStatus FROM c JOIN r IN c.reactFlow.nodes WHERE r.data.assignee.email = @email AND r.data.assignee.id = @id AND r.data.status = 'active' AND r.id != '1'",
+      parameters: [
+        { name: "@email", value: email },
+        { name: "@id", value: id },
+      ],
+    };
+
+    const { resources } = await submissionRequestsContainer.items
+      .query(querySpec)
+      .fetchAll();
+
+    if (resources.length) {
+      const request = await Promise.all(
+        resources.map(async (resource: any) => {
+          const nodesData = await Promise.all(
+            resource.reactFlow.nodes.map(async (node: any) => {
+              const { assignee, submissionId } = node.data;
+
+              if (assignee && submissionId) {
+                const { name, email } = assignee;
+                const da = await getSubmission(req, res, submissionId);
+                return { name, email, submissionId, da };
+              }
+              return null;
+            })
+          );
+
+          const filteredNodesData = nodesData.filter(
+            (node: any) => node !== null
+          );
+          return {
+            id: resource.id,
+            flowStatus: resource.flowStatus,
+            submittedBy: resource.SubmittedBy,
+            data: filteredNodesData,
+          };
+        })
+      );
+
+      res.status(200).json({ resources: request });
+      return;
+    }
+  } catch (err) {
+    throw err;
+  }
 };

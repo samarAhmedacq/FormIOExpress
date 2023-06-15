@@ -3,6 +3,7 @@ import submissionRequests, {
   ReactFlowEdge,
   ReactFlowNode,
 } from "../interfaces/submissionRequests";
+import submission from "../interfaces/submissions";
 
 export const updateCurrentNodeData = async (
   submissionId: string,
@@ -49,11 +50,9 @@ export const updateNextOrPrevNodeProperties = async (
       .map((edge) => {
         const node = nodes.find((node) => node.id === edge.source);
         if (!node) {
-          res
-            .status(404)
-            .json({
-              error: "Yoo cannot revert the node as you are at the first node",
-            });
+          res.status(404).json({
+            error: "Yoo cannot revert the node as you are at the first node",
+          });
           return;
         }
 
@@ -66,5 +65,30 @@ export const updateNextOrPrevNodeProperties = async (
 
         return node;
       });
+  }
+};
+
+export const getSubmission = async (
+  req: any,
+  res: any,
+  submissionId: string
+) => {
+  const { submissionsContainer } = req.cosmos;
+  const querySpec = {
+    query:
+      "SELECT c.id, c.jsonSchema, c.submitData FROM c WHERE c.id = @submissionId",
+    parameters: [{ name: "@submissionId", value: submissionId }],
+  };
+
+  const { resources } = await submissionsContainer.items
+    .query(querySpec)
+    .fetchAll();
+
+  if (resources.length > 0) {
+    const { jsonSchema, submitData } = resources[0];
+    return { jsonSchema, submitData };
+  } else {
+    res.status(404).json({ error: "Submission not found" });
+    return;
   }
 };

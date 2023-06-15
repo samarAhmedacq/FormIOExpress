@@ -4,7 +4,7 @@ export interface submission {
   assigneeId: string;
   assigneeName: string;
   assigneeEmail: string;
-  jsonSchema: string;
-  submitData: string;
+  jsonSchema: any;
+  submitData:any;
 }
 export default submission;
