@@ -1,5 +1,4 @@
 import { Response } from "express";
-
 import Form, { assignee } from "../interfaces/form";
 import { GetForm } from "../Utils/formUtils";
 import submissionRequests from "../interfaces/submissionRequests";
@@ -10,8 +9,12 @@ import {
 } from "../Utils/requestUtils";
 
 exports.createRequest = async (req: any, res: Response) => {
-  const { owner } = req.user;
-  const assignee: assignee = owner;
+  const { id, name, email } = req.user;
+  const assignee: assignee = {
+    id: id,
+    name: name,
+    email: email,
+  };
   const { submissionsContainer, submissionRequestsContainer } = req.cosmos;
   const formId: string = req.params.formId;
   const form: Form = await GetForm(req, res, formId);
@@ -34,6 +37,7 @@ exports.createRequest = async (req: any, res: Response) => {
   const submitData: any = req.body.submitData;
 
   const submission: submission = {
+    formId: formId,
     assigneeId: assignee.id,
     assigneeName: assignee.name,
     assigneeEmail: assignee.email,
@@ -56,6 +60,6 @@ exports.createRequest = async (req: any, res: Response) => {
     await submissionRequestsContainer.items.create(submissionRequest);
   res
     .status(201)
-    .json({ response: "requestcreated", createdSubmissionRequest });
+    .json({ response: "request created", createdSubmissionRequest });
   return;
 };

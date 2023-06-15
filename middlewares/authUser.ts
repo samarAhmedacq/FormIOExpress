@@ -8,7 +8,7 @@ export const authenticateUserMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
-console.log("h")
+  console.log("h");
   const authorizationHeader: string | undefined = req.headers["authorization"];
 
   if (!authorizationHeader) {
@@ -32,26 +32,27 @@ console.log("h")
       res.status(403).json({ response: "Forbidden" });
       return;
     }
-  
-    const { id, name,email, role, department } = decodedToken;
+
+    const { id, name, email, role, department } = decodedToken;
     const { departmentName, departmentRole } = department;
-    const owner: Owner= {
-        id: id,
-        name: name,
-        email: email,
-        departmentName: departmentName,
-        departmentRole: departmentRole,
-        role: "owner",
-      };
+    const owner: Owner = {
+      id: id,
+      name: name,
+      email: email,
+      departmentName: departmentName,
+      departmentRole: departmentRole,
+      role: "owner",
+    };
     req.user = {
       id,
       name,
+      email,
       role,
       department: {
         departmentName,
         departmentRole,
       },
-      owner
+      owner,
     };
     next();
   } catch (error) {
