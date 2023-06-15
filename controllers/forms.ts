@@ -3,15 +3,22 @@ import FormSchema, {
   FormCode,
   updateFormSchema,
   shareSchema,
+  statusSchema,
 } from "../models/FormSchema";
 import Form, { Flow, JsonSchema, formRole } from "../interfaces/form";
 import {
   GetForm,
   checkDraftPresent,
   checkFormCode,
+  createOwner,
+  createRequest,
+  getEmailOfOwner,
   getIdOfOwner,
+  getRequest,
+  publishCheck,
 } from "../Utils/formUtils";
 import { sendEmail } from "../Utils/userUtils";
+import request from "../interfaces/request";
 
 exports.createForm = async (req: any, res: Response) => {
   const form: Form = req.body;
@@ -20,14 +27,14 @@ exports.createForm = async (req: any, res: Response) => {
 
   const formCodeValidationResult = await FormCode.validate(form.formCode);
   if (formCodeValidationResult.error) {
-    res.status(404).json({ error: formCodeValidationResult.error.message });
+    res.status(400).json({ error: formCodeValidationResult.error.message });
     return;
   }
 
   const ownerId: string = owner.id;
   const exists: boolean = await checkFormCode(req, form.formCode, ownerId);
   if (exists) {
-    res.status(404).json({
+    res.status(400).json({
       error:
         "A form with the same FormCode already exists. Please choose a different FormCode.",
     });
@@ -50,6 +57,85 @@ exports.createForm = async (req: any, res: Response) => {
 
   res.status(201).json({ form });
   return;
+};
+
+exports.getForm = async (req: any, res: Response) => {
+  const formId: string = req.params.formId;
+  const { formsContainer } = req.cosmos;
+  const { id } = req.user;
+  try {
+    const querySpec = {
+      query:
+        "SELECT f.id,f.jsonSchema,f.formName,f.formCode,f.roles,f.version FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND f.id = @formId",
+      parameters: [
+        {
+          name: "@ownerId",
+          value: id,
+        },
+        {
+          name: "@formId",
+          value: formId,
+        },
+      ],
+    };
+
+    const { resources } = await formsContainer.items
+      .query(querySpec)
+      .fetchAll();
+
+    if (resources.length > 0) {
+      const form: Form = resources[0];
+      res.status(200).json({ form });
+      return;
+    } else {
+      res.status(404).json({ error: "Form Not found" });
+      return;
+    }
+  } catch (err) {
+    throw err;
+  }
+};
+
+exports.getFormsByStatus = async (req: any, res: Response) => {
+  const { id } = req.user;
+  const status: string = req.params.status;
+  const { formsContainer } = req.cosmos;
+  const { error } = statusSchema.validate(status);
+  if (error) {
+    res.status(400).json({ error: error.message });
+    return;
+  }
+  try {
+    const querySpec = {
+      query:
+        "SELECT f.id ,f.jsonSchema,f.formName,f.status,f.formCode FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND o.role = 'owner' AND f.status = @status",
+      parameters: [
+        {
+          name: "@ownerId",
+          value: id,
+        },
+        {
+          name: "@status",
+          value: status,
+        },
+      ],
+    };
+
+    const { resources } = await formsContainer.items
+      .query(querySpec)
+      .fetchAll();
+
+    if (resources.length) {
+      const forms: Form[] = resources;
+      res.status(200).json({ forms });
+      return;
+    } else {
+      res.status(404).json({ error: "Form Not Found" });
+      return;
+    }
+  } catch (err) {
+    throw err;
+  }
 };
 
 exports.editForm = async (req: any, res: Response) => {
@@ -124,7 +210,7 @@ exports.createDraft = async (req: any, res: Response) => {
     const codeToBeChecked: string = form.formCode!;
     const exists: boolean = await checkDraftPresent(req, codeToBeChecked, id);
     if (exists) {
-      res.status(404).json({
+      res.status(400).json({
         error: "there is a draft of this form already present",
       });
       return;
@@ -152,13 +238,18 @@ exports.createFlow = async (req: any, res: Response) => {
 
   const formId: string = req.params.formId;
   const form: Form = await GetForm(req, res, formId);
+  if (!form) {
+    res.status(404).json({ error: "there is no form with given id" });
+
+    return;
+  }
 
   const { formsContainer } = req.cosmos;
   const formRoles = form.roles;
 
   const OwnerId: string = await getIdOfOwner(formRoles);
   if (id != OwnerId) {
-    res.status(404).json({
+    res.status(400).json({
       error:
         "You are not owner of the form you cannot create the Flow of this form",
     });
@@ -166,7 +257,7 @@ exports.createFlow = async (req: any, res: Response) => {
   }
   if (form.reactFlow) {
     res
-      .status(404)
+      .status(400)
       .json({ error: "The ReactFlow of this form is already created" });
     return;
   }
@@ -183,13 +274,17 @@ exports.editFlow = async (req: any, res: Response) => {
 
   const formId: string = req.params.formId;
   const form: Form = await GetForm(req, res, formId);
+  if (!form) {
+    res.status(404).json({ error: "there is no form with given id" });
 
+    return;
+  }
   const { formsContainer } = req.cosmos;
   const formRoles = form.roles;
 
   const OwnerId: string = await getIdOfOwner(formRoles);
   if (id != OwnerId) {
-    res.status(404).json({
+    res.status(400).json({
       error:
         "You are not owner of the form you cannot edit the Flow of this form",
     });
@@ -263,7 +358,7 @@ exports.shareForm = async (req: any, res: Response) => {
   const shareWith: formRole = req.body;
   const { error } = shareSchema.validate(shareWith);
   if (error) {
-    res.status(404).json({ error: error.message });
+    res.status(400).json({ error: error.message });
   }
   const querySpec = {
     query:
@@ -294,7 +389,7 @@ exports.shareForm = async (req: any, res: Response) => {
     roles.forEach((owner) => {
       if (owner.id === newID) {
         res
-          .status(404)
+          .status(400)
           .json({ error: "Form is already shared with this User" });
       }
       return;
@@ -302,12 +397,355 @@ exports.shareForm = async (req: any, res: Response) => {
     roles.push(shareWith);
     form.roles = roles;
     await formsContainer.item(form.id, form.id).replace(form);
-    await sendEmail(
-      shareWith.email,
-      owner.email,
-      `${owner.email} has shared form with ${shareWith.email}`
-    );
+    // await sendEmail(
+    //   shareWith.email,
+    //   owner.email,
+    //   `${owner.email} has shared form with ${shareWith.email}`
+    // );
     res.status(200).json({ form });
     return;
+  }
+};
+
+exports.getAllFormsOfUser = async (req: any, res: Response) => {
+  const { id } = req.user;
+  const { formsContainer } = req.cosmos;
+  const querySpec = {
+    query:
+      "SELECT f.id ,f.jsonSchema,f.formName,f.formCode,f.status,f.department,f.ReferenceNumber,f.reactFlow,f.roles FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND (o.role = 'owner' OR o.role = 'contributor')",
+    parameters: [
+      {
+        name: "@ownerId",
+        value: id,
+      },
+    ],
+  };
+
+  const { resources }: any = await formsContainer.items
+    .query(querySpec)
+    .fetchAll();
+
+  if (resources.length) {
+    const forms: Form[] = resources;
+    res.status(200).json({ forms });
+    return;
+  } else {
+    res.status(404).json({ error: "there is no form present" });
+    return;
+  }
+};
+
+exports.getDepFormsAdmin = async (req: any, res: Response) => {
+  const { department } = req.user;
+  const { formsContainer } = req.cosmos;
+  const departmentName: string = department.departmentName;
+  const querySpec = {
+    query:
+      "SELECT f.id ,f.jsonSchema,f.formName,f.status,f.formCode,f.roles,f.department,f.version,f.ReferenceNumber,f.reactFlow FROM forms f WHERE (f.status = 'draft' OR f.status = 'published') AND ARRAY_CONTAINS(f.department, @departmentName)",
+    parameters: [
+      {
+        name: "@departmentName",
+        value: departmentName,
+      },
+    ],
+  };
+
+  const { resources } = await formsContainer.items.query(querySpec).fetchAll();
+
+  if (resources.length) {
+    const forms: Form[] = resources;
+    res.status(200).json({ forms });
+    return;
+  } else {
+    res.status(404).json({ error: "there is no form present" });
+    return;
+  }
+};
+
+exports.getAllDepFormsAdmin = async (req: any, res: Response) => {
+  const { department } = req.user;
+  const { formsContainer } = req.cosmos;
+  const departmentName: string = req.params.departmentName;
+  const querySpec = {
+    query:
+      "SELECT f.id ,f.jsonSchema,f.formName,f.status,f.formCode,f.roles,f.department,f.version,f.ReferenceNumber,f.reactFlow FROM forms f WHERE f.status = 'published' AND ARRAY_CONTAINS(f.department, @departmentName)",
+    parameters: [
+      {
+        name: "@departmentName",
+        value: departmentName,
+      },
+    ],
+  };
+
+  const { resources } = await formsContainer.items.query(querySpec).fetchAll();
+
+  if (resources.length) {
+    const forms: Form[] = resources;
+    res.status(200).json({ forms });
+    return;
+  } else {
+    res.status(404).json({ error: "there is no form present" });
+    return;
+  }
+};
+
+exports.getFormsMember = async (req: any, res: Response) => {
+  const { department } = req.user;
+  const { formsContainer } = req.cosmos;
+  const departmentName: string = department.departmentName;
+  const querySpec = {
+    query:
+      "SELECT f.id ,f.jsonSchema,f.formName,f.status,f.formCode,f.roles,f.department,f.ReferenceNumber,f.reactFlow FROM forms f WHERE f.status = @status AND ARRAY_CONTAINS(f.department, @departmentName)",
+    parameters: [
+      {
+        name: "@status",
+        value: "published",
+      },
+      {
+        name: "@departmentName",
+        value: departmentName,
+      },
+    ],
+  };
+
+  const { resources } = await formsContainer.items.query(querySpec).fetchAll();
+
+  if (resources.length) {
+    const forms: Form[] = resources;
+    res.status(200).json({ forms });
+    return;
+  } else {
+    res.status(404).json({ error: "there is no form present" });
+    return;
+  }
+};
+
+exports.publishForm = async (req: any, res: Response) => {
+  const { formsContainer } = req.cosmos;
+  const { id, name, email } = req.user;
+  const formId: string = req.params.formId;
+
+  const querySpec = {
+    query:
+      "SELECT f.formName,f.jsonSchema,f.formCode,f.roles,f.id,f.status,f.version,f.department,f.reactFlow,f.ReferenceNumber FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND (o.role = 'owner' OR o.role = 'contributor') AND f.id = @formId",
+    parameters: [
+      {
+        name: "@ownerId",
+        value: id,
+      },
+      {
+        name: "@formId",
+        value: formId,
+      },
+    ],
+  };
+
+  const { resources } = await formsContainer.items.query(querySpec).fetchAll();
+
+  if (resources.length > 0) {
+    const form: Form = resources[0];
+    if (form.status == "published" || form.status == "archived") {
+      res.status(400).json({
+        error:
+          "Form cannot be published as it is already archived or published",
+      });
+      return;
+    }
+    if (!form.reactFlow) {
+      res.status(400).json({
+        error:
+          "Form cannot be published as the react Flow of this Form is not created",
+      });
+      return;
+    }
+    const OwnerId: string = await getIdOfOwner(form.roles);
+    const OwnerEmail = await getEmailOfOwner(form.roles);
+    if (OwnerId != id) {
+      const resource: request = await createRequest(
+        req,
+        formId,
+        id,
+        name,
+        email,
+        "pending",
+        "publish"
+      );
+
+      // await sendEmail(
+      //   email,
+      //   OwnerEmail,
+      //   `<p>${email} the contributor in this form is trying to publish this form ${formId} </p><p>Accept Request: <a href="http://localhost:4000/form/publishContributorForm/${formId}/${resource.id}">Accept</a></p>`
+      // );
+
+      return resource;
+    }
+    await publishCheck(req, form.formCode!, form.id!);
+    form.status = "published";
+    await formsContainer.item(form.id, form.id).replace(form);
+
+    res.status(200).json({ form });
+    return;
+  } else {
+    res.status(404).json({ error: "No Form Found with this Id" });
+    return;
+  }
+};
+
+exports.publishContributorForm = async (req: any, res: Response) => {
+  const { formsContainer, requestsContainer } = req.cosmos;
+  const formID: string = req.params.formId;
+  const verificationCode: string = req.params.verificationCode;
+  const resource: any = await getRequest(
+    req,
+    res,
+    formID,
+    verificationCode,
+    "publish"
+  );
+  if (resource) {
+    if (resource.status != "pending") {
+      res
+        .status(400)
+        .json({ error: "you have already accepted or rejected the request" });
+      return;
+    }
+
+    const form: Form = await GetForm(req, res, formID);
+    if (form.status == "published" || form.status == "archived") {
+      res.status(400).json({
+        error: "you cannot publish as it is already published or archived",
+      });
+      return;
+    }
+
+    const codeToBeChecked: string = form.formCode!;
+    const idToBeChecked: string = form.id!;
+
+    await publishCheck(req, codeToBeChecked, idToBeChecked);
+    form.status = "published";
+    await formsContainer.item(form.id, form.id).replace(form);
+    await sendEmail(
+      resource.email,
+      "samarahmedfast5@gmail.com",
+      "form Publish is accepted"
+    );
+    const UpdatedResource = resource;
+    UpdatedResource.status = "accepted";
+    await requestsContainer
+      .item(resource.id, resource.id)
+      .replace(UpdatedResource);
+    res.status(200).json({ response: "form is published" });
+    return;
+  } else {
+    res.status(404).json({ error: "No Form Found with this Id" });
+    return;
+  }
+};
+
+exports.cloneForm = async (req: any, res: Response) => {
+  const { formsContainer } = req.cosmos;
+  const formId: string = req.params.formId;
+  const { owner } = req.user;
+  const form: Form = await GetForm(req, res, formId);
+  if (!form) {
+    res.status(400).json({ error: "there is no form with given id" });
+
+    return;
+  }
+  const ownerEmail: string = await getEmailOfOwner(form.roles);
+  try {
+    if (owner.email != ownerEmail) {
+      const resource: request = await createRequest(
+        req,
+        formId,
+        owner.id,
+        owner.name,
+        owner.email,
+        "pending",
+        "clone"
+      );
+
+      // await formUtils.sendVerificationEmail(
+      //   "samarahmedfast5@gmail.com",
+      //   resource.id,
+      //   owner,
+      //   formID,
+      //   form.formName
+      // );
+
+      return resource;
+    }
+    let roles = [];
+    roles.push(owner);
+    let NewForm = form;
+    NewForm.id = "";
+    NewForm.roles = roles;
+    NewForm.status = "draft";
+    NewForm.version = 1;
+
+    const { resource } = await formsContainer.items.create(NewForm);
+    const createdForm: Form = resource;
+    res.status(201).json({ createdForm });
+  } catch (err) {
+    throw err;
+  }
+};
+
+exports.rejectCloneForm = async (req: any, res: Response) => {
+  const email: string = req.params.email;
+  await sendEmail(email, "", "");
+  return;
+};
+
+exports.verifyClone = async (req: any, res: Response) => {
+  const { formsContainer, requestsContainer } = req.cosmos;
+  const formId: string = req.params.formId;
+  const verificationCode: string = req.params.verificationCode;
+  try {
+    const resource = await getRequest(
+      req,
+      res,
+      formId,
+      verificationCode,
+      "clone"
+    );
+    if (resource) {
+      if (resource.status != "pending") {
+        res
+          .status(400)
+          .json({ error: "you have already accepted or rejected the request" });
+        return;
+      }
+
+      const form: Form = await GetForm(req, res, formId);
+      if (!form) {
+        res.status(400).json({ error: "there is no form with given id" });
+
+        return;
+      }
+      let roles: formRole[] = await createOwner(resource);
+
+      let NewForm: Form = form;
+      NewForm.id = "";
+      NewForm.roles = roles;
+      NewForm.status = "draft";
+      NewForm.version = 1;
+
+      await formsContainer.items.create(NewForm);
+      // await formUtils.sendAcceptanceEmail(resource.email, "clone");
+      const UpdatedResource = resource;
+      UpdatedResource.status = "accepted";
+      await requestsContainer
+        .item(resource.id, resource.id)
+        .replace(UpdatedResource);
+      res
+        .status(200)
+        .json({ response: `${resource.name} has cloned your Form` });
+      return;
+    } else {
+      res.status(404).json({ error: "Request Not found" });
+    }
+  } catch (err) {
+    throw err;
   }
 };

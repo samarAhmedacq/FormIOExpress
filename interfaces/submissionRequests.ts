@@ -12,8 +12,7 @@ export interface ReactFlowNode {
   selected?: boolean;
   data: {
     label: string;
-    submitData: any;
-    jsonSchema: any;
+    submissionId?:string;
     assignee?: {
       id: string;
       name: string;
@@ -43,7 +42,7 @@ export interface ReactFlowData {
   nodes: ReactFlowNode[];
 }
 
-export interface Submission {
+export interface submissionRequests {
   id?: string;
   formId: string;
   SubmittedBy: any;
@@ -52,4 +51,4 @@ export interface Submission {
   reactFlow: ReactFlowData;
 }
 
-export default Submission;
+export default submissionRequests;

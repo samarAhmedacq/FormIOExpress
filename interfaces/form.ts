@@ -36,8 +36,6 @@ export interface Edge {
 
 export interface NodeData {
   label: string;
-  submitData: any;
-  jsonSchema: any;
   assignee: {
     id: string;
     name: string;
