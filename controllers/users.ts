@@ -7,9 +7,11 @@ import {
   GiveTokens,
   updateRtHash,
   getUser,
+  createUser,
 } from "../Utils/userUtils";
 import * as bcrypt from "bcryptjs";
 import Tokens, { UserToken } from "../interfaces/Tokens";
+import { userGet, userGetByDepartment } from "../queries/userQueries";
 
 exports.createUser = async (req: any, res: Response) => {
   const User: User = req.body;
@@ -56,13 +58,8 @@ exports.signIn = async (req: Request, res: Response) => {
     return;
   }
 
-  const user: User = {
-    name: singleUser.name,
-    email: singleUser.email,
-    department: singleUser.department,
-    role: singleUser.role,
-    id: singleUser.id,
-  };
+  const user: User = createUser(singleUser);
+
   const { accessToken, refreshToken }: Tokens = await GiveTokens(user);
   const id: string = singleUser.id ?? "";
   const { resource } = await updateRtHash(req, id, user.email, refreshToken);
@@ -75,16 +72,7 @@ exports.signIn = async (req: Request, res: Response) => {
 exports.getAllUsers = async (req: any, res: Response) => {
   const { id } = req.user;
   const { usersContainer } = req.cosmos;
-  const querySpec = {
-    query:
-      "SELECT c.id,c.email,c.name,c.role,c.department FROM c WHERE c.id != @id",
-    parameters: [
-      {
-        name: "@id",
-        value: id,
-      },
-    ],
-  };
+  const querySpec = userGet(id);
 
   const { resources } = await usersContainer.items.query(querySpec).fetchAll();
 
@@ -102,20 +90,7 @@ exports.getAllUsersOfDepartment = async (req: any, res: Response) => {
   const departmentName: string = req.params.departmentName;
   const { id } = req.user;
   const { usersContainer } = req.cosmos;
-  const querySpec = {
-    query:
-      "SELECT c.id,c.email,c.name,c.role,c.department FROM c WHERE c.id != @id AND c.department.departmentName = @departmentName",
-    parameters: [
-      {
-        name: "@id",
-        value: id,
-      },
-      {
-        name: "@departmentName",
-        value: departmentName,
-      },
-    ],
-  };
+  const querySpec = userGetByDepartment(id, departmentName);
 
   const { resources } = await usersContainer.items.query(querySpec).fetchAll();
 

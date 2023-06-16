@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import * as bcrypt from "bcryptjs";
 import Tokens from "../interfaces/Tokens";
 import { Response } from "express";
+import User from "../interfaces/User";
 const nodemailer = require("nodemailer");
 export const findEmail = async (req: any, email: string) => {
   const { usersContainer } = req.cosmos;
@@ -107,14 +108,14 @@ export const sendEmail = async (
   let transporter = nodemailer.createTransport({
     host: "smtp.office365.com",
     port: 587,
-    secure: false, // StartTLS should be enabled
+    secure: false,
     auth: {
       user: "developer@aquila360.com",
       pass: "36O@qu!la",
     },
     tls: {
-      rejectUnauthorized: false
-    }
+      rejectUnauthorized: false,
+    },
   });
   let mailOptions = {
     from: "developer@aquila360.com",
@@ -123,7 +124,6 @@ export const sendEmail = async (
     text: Content,
   };
 
-  // Send the email
   transporter.sendMail(mailOptions, function (error: any, info: any) {
     if (error) {
       console.log(error);
@@ -131,4 +131,16 @@ export const sendEmail = async (
       console.log("Email sent: " + info.response);
     }
   });
+};
+
+export const createUser = (singleUser: User): User => {
+  const user: User = {
+    name: singleUser.name,
+    email: singleUser.email,
+    department: singleUser.department,
+    role: singleUser.role,
+    id: singleUser.id,
+  };
+
+  return user;
 };

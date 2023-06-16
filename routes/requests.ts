@@ -1,5 +1,9 @@
 import express from "express";
-const { createRequest, getRequests } = require("../controllers/requests");
+const {
+  createRequest,
+  getRequests,
+  requestResponse,
+} = require("../controllers/requests");
 import { authenticateUserMiddleware } from "../middlewares/authUser";
 import { validateUserRole } from "../middlewares/validateUserRole";
 
@@ -12,5 +16,9 @@ requestRoutes
 requestRoutes
   .route("/getRequests")
   .get(authenticateUserMiddleware, validateUserRole, getRequests);
+
+requestRoutes
+  .route("/requestResponse/:requestId/:response")
+  .put(authenticateUserMiddleware, requestResponse);
 
 export default requestRoutes;

@@ -4,48 +4,43 @@ import { GetForm } from "../Utils/formUtils";
 import submissionRequests from "../interfaces/submissionRequests";
 import submission from "../interfaces/submissions";
 import {
-  getSubmission,
+  createAssignee,
+  createNewSubmission,
+  createSubmission,
+  createSubmissionRequest,
+  findNodesEdgesAndCurrentNode,
+  getRequestWithId,
+  processResources,
+  rejectRequest,
   updateCurrentNodeData,
   updateNextOrPrevNodeProperties,
+  updateNodeProperties,
 } from "../Utils/requestUtils";
+import { getRequests } from "../queries/requestQueries";
 
 exports.createRequest = async (req: any, res: Response) => {
-  const { id, name, email } = req.user;
-  const assignee: assignee = {
-    id: id,
-    name: name,
-    email: email,
-  };
+  const assignee: assignee = await createAssignee(req.user);
   const { submissionsContainer, submissionRequestsContainer } = req.cosmos;
   const formId: string = req.params.formId;
-  const form: Form = await GetForm(req, res, formId);
-  if (!form) {
-    res.status(404).json({ error: "Form Not found" });
-    return;
-  }
-  if (form.status != "published") {
+  const jsonSchema: any = req.body.jsonSchema;
+  const submitData: any = req.body.submitData;
+  const form: Form | undefined = await GetForm(req, res, formId);
+
+  if (form!.status != "published") {
     res.status(400).json({ error: "Form is Not Published" });
     return;
   }
-  const submissionRequest: submissionRequests = {
-    formId: form.id!,
-    formVersion: form.version!,
-    flowStatus: "Inprogress",
-    SubmittedBy: assignee,
-    reactFlow: form.reactFlow!,
-  };
-  const jsonSchema: any = req.body.jsonSchema;
-  const submitData: any = req.body.submitData;
+  const submissionRequest: submissionRequests = await createSubmissionRequest(
+    form!,
+    assignee
+  );
 
-  const submission: submission = {
-    formId: formId,
-    assigneeId: assignee.id,
-    assigneeName: assignee.name,
-    assigneeEmail: assignee.email,
-    jsonSchema: jsonSchema,
-    submitData: submitData,
-  };
-
+  const submission: submission = await createSubmission(
+    formId,
+    assignee,
+    jsonSchema,
+    submitData
+  );
   const { resource: createdSubmission } =
     await submissionsContainer.items.create(submission);
 
@@ -59,6 +54,14 @@ exports.createRequest = async (req: any, res: Response) => {
   await updateNextOrPrevNodeProperties(res, edges, nodes, currentNode!, "Next");
   const { resource: createdSubmissionRequest } =
     await submissionRequestsContainer.items.create(submissionRequest);
+
+  const newSubmission = await createNewSubmission(
+    createdSubmissionRequest,
+    submission
+  );
+
+  await submissionsContainer.item(submissionId, formId).replace(newSubmission);
+
   res
     .status(201)
     .json({ response: "request created", createdSubmissionRequest });
@@ -69,52 +72,126 @@ exports.getRequests = async (req: any, res: any) => {
   const { id, email } = req.user;
   const { submissionRequestsContainer } = req.cosmos;
 
-  try {
-    const querySpec = {
-      query:
-        "SELECT c.id, c.formId, c.version, c.reactFlow, c.SubmittedBy, c.flowStatus FROM c JOIN r IN c.reactFlow.nodes WHERE r.data.assignee.email = @email AND r.data.assignee.id = @id AND r.data.status = 'active' AND r.id != '1'",
-      parameters: [
-        { name: "@email", value: email },
-        { name: "@id", value: id },
-      ],
-    };
+  const querySpec = getRequests(email, id);
 
-    const { resources } = await submissionRequestsContainer.items
-      .query(querySpec)
-      .fetchAll();
+  const { resources } = await submissionRequestsContainer.items
+    .query(querySpec)
+    .fetchAll();
 
-    if (resources.length) {
-      const request = await Promise.all(
-        resources.map(async (resource: any) => {
-          const nodesData = await Promise.all(
-            resource.reactFlow.nodes.map(async (node: any) => {
-              const { assignee, submissionId } = node.data;
+  if (resources.length) {
+    const request = await processResources(resources, req, res);
 
-              if (assignee && submissionId) {
-                const { name, email } = assignee;
-                const da = await getSubmission(req, res, submissionId);
-                return { name, email, submissionId, da };
-              }
-              return null;
-            })
-          );
+    res.status(200).json({ resources: request });
+    return;
+  } else {
+    res.status(404).json({ error: "no request received" });
+    return;
+  }
+};
 
-          const filteredNodesData = nodesData.filter(
-            (node: any) => node !== null
-          );
-          return {
-            id: resource.id,
-            flowStatus: resource.flowStatus,
-            submittedBy: resource.SubmittedBy,
-            data: filteredNodesData,
-          };
-        })
+exports.requestResponse = async (req: any, res: any) => {
+  const assignee: assignee = await createAssignee(req.user);
+  const response: string = req.params.response;
+  const requestId: string = req.params.requestId;
+  const jsonSchema: any = req.body.jsonSchema;
+  const submitData: any = req.body.submitData;
+  const request: submissionRequests = await getRequestWithId(
+    req,
+    res,
+    requestId
+  );
+  if (
+    !request ||
+    request.flowStatus == "rejected" ||
+    request.flowStatus == "completed"
+  ) {
+    res.status(400).json({
+      error:
+        "You cannot respond to this request as it is already completed or rejected",
+    });
+    return;
+  }
+  const data = await findNodesEdgesAndCurrentNode(res, request, assignee.id);
+  if (data) {
+    const nodes = data!.nodes;
+    const edges = data!.edges;
+    const currentNode = data!.currentNode;
+    if (response === "accept") {
+      await updateNodeProperties(
+        res,
+        assignee,
+        request.formId,
+        req,
+        nodes,
+        edges,
+        currentNode,
+        jsonSchema,
+        submitData,
+        "inactive",
+        "accept"
       );
-
-      res.status(200).json({ resources: request });
+      await updateNextOrPrevNodeProperties(
+        res,
+        edges,
+        nodes,
+        currentNode,
+        "Next"
+      );
+      // await requestUtils.sendEmail(
+      //   request.SubmittedBy.email,
+      //   assignee.email,
+      //   `${assignee.email} has accepted the request`
+      // );
+    } else if (response === "revert") {
+      if (currentNode.type === "input") {
+        res.status(404).json({
+          error: "you cannot revert the request as you are the input node",
+        });
+        return;
+      }
+      await updateNodeProperties(
+        res,
+        assignee,
+        request.formId,
+        req,
+        nodes,
+        edges,
+        currentNode,
+        jsonSchema,
+        submitData,
+        "inactive",
+        "reverted"
+      );
+      await updateNextOrPrevNodeProperties(
+        res,
+        edges,
+        nodes,
+        currentNode,
+        "Prev"
+      );
+      // await requestUtils.sendEmail(
+      //   request.SubmittedBy.email,
+      //   assignee.email,
+      //   `${assignee.email} has reverted the request`
+      // );
+    } else if (response === "rejected") {
+      const response = await rejectRequest(req, request, assignee);
+      res.status(200).json({ response });
       return;
     }
-  } catch (err) {
-    throw err;
+    const allNodesInactive: boolean = request.reactFlow.nodes.every(
+      (node) => node.data.status === "inactive"
+    );
+    if (allNodesInactive) {
+      request.flowStatus = "completed";
+    }
+    const { submissionRequestsContainer } = req.cosmos;
+    await submissionRequestsContainer
+      .item(request.id, request.id)
+      .replace(request);
+    res.status(200).json({ request });
+    return;
+  } else {
+    return;
   }
 };

@@ -19,6 +19,18 @@ import {
 } from "../Utils/formUtils";
 import { sendEmail } from "../Utils/userUtils";
 import request from "../interfaces/request";
+import {
+  getAFormToPublish,
+  getAllDepFormsAdmin,
+  getAllFormsOfUser,
+  getDepFormsAdmin,
+  getFormForDraft,
+  getFormForShare,
+  getFormWithCodeAndVersion,
+  getFormWithId,
+  getFormWithStatus,
+  getLatestForms,
+} from "../queries/formQueries";
 
 exports.createForm = async (req: any, res: Response) => {
   const form: Form = req.body;
@@ -63,26 +75,12 @@ exports.getForm = async (req: any, res: Response) => {
   const formId: string = req.params.formId;
   const { formsContainer } = req.cosmos;
   const { id } = req.user;
-  try {
-    const querySpec = {
-      query:
-        "SELECT f.id,f.jsonSchema,f.formName,f.formCode,f.roles,f.version FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND f.id = @formId",
-      parameters: [
-        {
-          name: "@ownerId",
-          value: id,
-        },
-        {
-          name: "@formId",
-          value: formId,
-        },
-      ],
-    };
 
+  try {
+    const querySpec = getFormWithId(formId, id);
     const { resources } = await formsContainer.items
       .query(querySpec)
       .fetchAll();
-
     if (resources.length > 0) {
       const form: Form = resources[0];
       res.status(200).json({ form });
@@ -106,20 +104,7 @@ exports.getFormsByStatus = async (req: any, res: Response) => {
     return;
   }
   try {
-    const querySpec = {
-      query:
-        "SELECT f.id ,f.jsonSchema,f.formName,f.status,f.formCode FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND o.role = 'owner' AND f.status = @status",
-      parameters: [
-        {
-          name: "@ownerId",
-          value: id,
-        },
-        {
-          name: "@status",
-          value: status,
-        },
-      ],
-    };
+    const querySpec = getFormWithStatus(status, id);
 
     const { resources } = await formsContainer.items
       .query(querySpec)
@@ -151,24 +136,7 @@ exports.editForm = async (req: any, res: Response) => {
     return;
   }
 
-  const querySpec = {
-    query:
-      "SELECT f.id, f.jsonSchema,f.roles,f.status,f.formCode,f.formName,f.department,f.ReferenceNumber,f.reactFlow,f.version FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND (o.role = 'owner' OR o.role = 'contributor') AND f.id = @formId AND f.status = @status",
-    parameters: [
-      {
-        name: "@ownerId",
-        value: id,
-      },
-      {
-        name: "@formId",
-        value: formId,
-      },
-      {
-        name: "@status",
-        value: "draft",
-      },
-    ],
-  };
+  const querySpec = getFormWithId(formId, id);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -193,16 +161,7 @@ exports.createDraft = async (req: any, res: Response) => {
   const { id } = req.user;
   const { formsContainer } = req.cosmos;
 
-  const querySpec = {
-    query:
-      "SELECT f.id, f.jsonSchema,f.roles,f.status,f.formCode,f.formName,f.version,f.department,f.ReferenceNumber,f.reactFlow FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND (o.role = @role OR o.role = 'contributor') AND f.id = @formId AND f.status = @status",
-    parameters: [
-      { name: "@ownerId", value: id },
-      { name: "@formId", value: formId },
-      { name: "@status", value: "published" },
-      { name: "@role", value: "owner" },
-    ],
-  };
+  const querySpec = getFormForDraft(formId, id);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
   if (resources.length > 0) {
@@ -237,7 +196,7 @@ exports.createFlow = async (req: any, res: Response) => {
   const Flow: Flow = req.body;
 
   const formId: string = req.params.formId;
-  const form: Form = await GetForm(req, res, formId);
+  const form: Form | undefined = await GetForm(req, res, formId);
   if (!form) {
     res.status(404).json({ error: "there is no form with given id" });
 
@@ -273,7 +232,7 @@ exports.editFlow = async (req: any, res: Response) => {
   const Flow: Flow = req.body;
 
   const formId: string = req.params.formId;
-  const form: Form = await GetForm(req, res, formId);
+  const form: Form | undefined = await GetForm(req, res, formId);
   if (!form) {
     res.status(404).json({ error: "there is no form with given id" });
 
@@ -301,16 +260,7 @@ exports.editFlow = async (req: any, res: Response) => {
 exports.getLatestForms = async (req: any, res: Response) => {
   const { id } = req.user;
   const { formsContainer } = req.cosmos;
-  const querySpec = {
-    query:
-      "SELECT f.formCode, MAX(f.version) AS LatestVersion FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND (o.role = 'owner' OR o.role = 'contributor') GROUP BY f.formCode",
-    parameters: [
-      {
-        name: "@ownerId",
-        value: id,
-      },
-    ],
-  };
+  const querySpec = getLatestForms(id);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -329,15 +279,7 @@ exports.SearchFormWithCodeAndVersion = async (req: any, res: Response) => {
   const formCode: string = req.params.formCode;
   const version: number = parseInt(req.params.version);
   const { formsContainer } = req.cosmos;
-  const querySpec = {
-    query:
-      "SELECT f.formName,f.jsonSchema,f.formCode,f.id,f.status,f.department,f.version,f.reactFlow,f.ReferenceNumber,f.roles FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND (o.role = 'owner' OR o.role = 'contributor') AND f.formCode = @formCode AND f.version = @version",
-    parameters: [
-      { name: "@formCode", value: formCode },
-      { name: "@ownerId", value: id },
-      { name: "@version", value: version },
-    ],
-  };
+  const querySpec = getFormWithCodeAndVersion(id, formCode, version);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -360,24 +302,7 @@ exports.shareForm = async (req: any, res: Response) => {
   if (error) {
     res.status(400).json({ error: error.message });
   }
-  const querySpec = {
-    query:
-      "SELECT f.id, f.jsonSchema,f.roles,f.formName,f.formCode,f.version,f.status,f.department,f.ReferenceNumber,f.reactFlow FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND o.role = @role AND f.id = @formId",
-    parameters: [
-      {
-        name: "@ownerId",
-        value: id,
-      },
-      {
-        name: "@formId",
-        value: formId,
-      },
-      {
-        name: "@role",
-        value: "owner",
-      },
-    ],
-  };
+  const querySpec = getFormForShare(id, formId);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -410,16 +335,7 @@ exports.shareForm = async (req: any, res: Response) => {
 exports.getAllFormsOfUser = async (req: any, res: Response) => {
   const { id } = req.user;
   const { formsContainer } = req.cosmos;
-  const querySpec = {
-    query:
-      "SELECT f.id ,f.jsonSchema,f.formName,f.formCode,f.status,f.department,f.ReferenceNumber,f.reactFlow,f.roles FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND (o.role = 'owner' OR o.role = 'contributor')",
-    parameters: [
-      {
-        name: "@ownerId",
-        value: id,
-      },
-    ],
-  };
+  const querySpec = getAllFormsOfUser(id);
 
   const { resources }: any = await formsContainer.items
     .query(querySpec)
@@ -439,16 +355,7 @@ exports.getDepFormsAdmin = async (req: any, res: Response) => {
   const { department } = req.user;
   const { formsContainer } = req.cosmos;
   const departmentName: string = department.departmentName;
-  const querySpec = {
-    query:
-      "SELECT f.id ,f.jsonSchema,f.formName,f.status,f.formCode,f.roles,f.department,f.version,f.ReferenceNumber,f.reactFlow FROM forms f WHERE (f.status = 'draft' OR f.status = 'published') AND ARRAY_CONTAINS(f.department, @departmentName)",
-    parameters: [
-      {
-        name: "@departmentName",
-        value: departmentName,
-      },
-    ],
-  };
+  const querySpec = getDepFormsAdmin(departmentName);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -463,19 +370,9 @@ exports.getDepFormsAdmin = async (req: any, res: Response) => {
 };
 
 exports.getAllDepFormsAdmin = async (req: any, res: Response) => {
-  const { department } = req.user;
   const { formsContainer } = req.cosmos;
   const departmentName: string = req.params.departmentName;
-  const querySpec = {
-    query:
-      "SELECT f.id ,f.jsonSchema,f.formName,f.status,f.formCode,f.roles,f.department,f.version,f.ReferenceNumber,f.reactFlow FROM forms f WHERE f.status = 'published' AND ARRAY_CONTAINS(f.department, @departmentName)",
-    parameters: [
-      {
-        name: "@departmentName",
-        value: departmentName,
-      },
-    ],
-  };
+  const querySpec = getAllDepFormsAdmin(departmentName);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -493,20 +390,7 @@ exports.getFormsMember = async (req: any, res: Response) => {
   const { department } = req.user;
   const { formsContainer } = req.cosmos;
   const departmentName: string = department.departmentName;
-  const querySpec = {
-    query:
-      "SELECT f.id ,f.jsonSchema,f.formName,f.status,f.formCode,f.roles,f.department,f.ReferenceNumber,f.reactFlow FROM forms f WHERE f.status = @status AND ARRAY_CONTAINS(f.department, @departmentName)",
-    parameters: [
-      {
-        name: "@status",
-        value: "published",
-      },
-      {
-        name: "@departmentName",
-        value: departmentName,
-      },
-    ],
-  };
+  const querySpec = getAllDepFormsAdmin(departmentName);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -525,20 +409,7 @@ exports.publishForm = async (req: any, res: Response) => {
   const { id, name, email } = req.user;
   const formId: string = req.params.formId;
 
-  const querySpec = {
-    query:
-      "SELECT f.formName,f.jsonSchema,f.formCode,f.roles,f.id,f.status,f.version,f.department,f.reactFlow,f.ReferenceNumber FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND (o.role = 'owner' OR o.role = 'contributor') AND f.id = @formId",
-    parameters: [
-      {
-        name: "@ownerId",
-        value: id,
-      },
-      {
-        name: "@formId",
-        value: formId,
-      },
-    ],
-  };
+  const querySpec = getAFormToPublish(id, formId);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -610,20 +481,20 @@ exports.publishContributorForm = async (req: any, res: Response) => {
       return;
     }
 
-    const form: Form = await GetForm(req, res, formID);
-    if (form.status == "published" || form.status == "archived") {
+    const form: Form | undefined = await GetForm(req, res, formID);
+    if (form!.status == "published" || form!.status == "archived") {
       res.status(400).json({
         error: "you cannot publish as it is already published or archived",
       });
       return;
     }
 
-    const codeToBeChecked: string = form.formCode!;
-    const idToBeChecked: string = form.id!;
+    const codeToBeChecked: string = form!.formCode!;
+    const idToBeChecked: string = form!.id!;
 
     await publishCheck(req, codeToBeChecked, idToBeChecked);
-    form.status = "published";
-    await formsContainer.item(form.id, form.id).replace(form);
+    form!.status = "published";
+    await formsContainer.item(form!.id, form!.id).replace(form);
     await sendEmail(
       resource.email,
       "samarahmedfast5@gmail.com",
@@ -646,7 +517,7 @@ exports.cloneForm = async (req: any, res: Response) => {
   const { formsContainer } = req.cosmos;
   const formId: string = req.params.formId;
   const { owner } = req.user;
-  const form: Form = await GetForm(req, res, formId);
+  const form: Form | undefined = await GetForm(req, res, formId);
   if (!form) {
     res.status(400).json({ error: "there is no form with given id" });
 
@@ -717,7 +588,7 @@ exports.verifyClone = async (req: any, res: Response) => {
         return;
       }
 
-      const form: Form = await GetForm(req, res, formId);
+      const form: Form | undefined = await GetForm(req, res, formId);
       if (!form) {
         res.status(400).json({ error: "there is no form with given id" });
 

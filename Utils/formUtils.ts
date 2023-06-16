@@ -1,4 +1,5 @@
 import Form, { Owner, formRole } from "../interfaces/form";
+import { GetPublishOrCloneRequest, checkCode, checkDraft, checkPublish } from "../queries/formQueries";
 
 export const checkFormCode = async (
   req: any,
@@ -7,14 +8,8 @@ export const checkFormCode = async (
 ): Promise<boolean> => {
   const { formsContainer } = req.cosmos;
 
-  const querySpec = {
-    query:
-      "SELECT f.formName,f.jsonSchema,f.formCode,f.roles,f.id,f.status FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND (o.role = 'owner' OR o.role = 'contributor') AND f.formCode = @formCode",
-    parameters: [
-      { name: "@formCode", value: codeToBeChecked },
-      { name: "@ownerId", value: ownerId },
-    ],
-  };
+  const querySpec = checkCode(codeToBeChecked!, ownerId);
+
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
   if (resources.length > 0) {
     return true;
@@ -27,11 +22,15 @@ export const GetForm = async (
   req: any,
   res: any,
   formID: string
-): Promise<Form> => {
+): Promise<Form | undefined> => {
   const { formsContainer } = req.cosmos;
   try {
     const { resource } = await formsContainer.item(formID, formID).read();
-    const form: Form = resource;
+    const form: Form | undefined = resource;
+    if (!form) {
+      res.status(404).json({ error: "Form Not found" });
+      return undefined;
+    }
     return form;
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
@@ -55,14 +54,8 @@ export const checkDraftPresent = async (
 ) => {
   const { formsContainer } = req.cosmos;
   try {
-    const querySpec = {
-      query:
-        "SELECT f.formName,f.jsonSchema,f.formCode,f.roles,f.id,f.status FROM forms f JOIN o IN f.roles WHERE o.id = @ownerId AND (o.role = 'owner' OR o.role = 'contributor') AND f.formCode = @formCode AND f.status = 'draft'",
-      parameters: [
-        { name: "@formCode", value: codeToBeChecked },
-        { name: "@ownerId", value: ownerId },
-      ],
-    };
+    const querySpec = checkDraft(codeToBeChecked, ownerId);
+
     const { resources } = await formsContainer.items
       .query(querySpec)
       .fetchAll();
@@ -103,15 +96,7 @@ export const publishCheck = async (
   idToBeChecked: string
 ) => {
   const { formsContainer } = req.cosmos;
-  const querySpec = {
-    query:
-      "SELECT f.formName,f.jsonSchema,f.formCode,f.roles,f.id,f.status,f.version,f.department,f.reactFlow,f.ReferenceNumber FROM forms f WHERE f.formCode = @formCode AND f.id != @id AND f.status = @status",
-    parameters: [
-      { name: "@formCode", value: codeToBeChecked },
-      { name: "@id", value: idToBeChecked },
-      { name: "@status", value: "published" },
-    ],
-  };
+  const querySpec = checkPublish(codeToBeChecked,idToBeChecked)
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
   if (resources.length > 0) {
     const form2: Form = resources[0];
@@ -128,24 +113,8 @@ export const getRequest = async (
   type: string
 ) => {
   const { requestsContainer } = req.cosmos;
-  const querySpec = {
-    query:
-      "SELECT * FROM c WHERE c.id = @id AND c.formID = @formID AND c.Type = @type",
-    parameters: [
-      {
-        name: "@id",
-        value: verificationCode,
-      },
-      {
-        name: "@formID",
-        value: formId,
-      },
-      {
-        name: "@type",
-        value: type,
-      },
-    ],
-  };
+  const querySpec = GetPublishOrCloneRequest(verificationCode,formId,type)
+
 
   const { resources } = await requestsContainer.items
     .query(querySpec)

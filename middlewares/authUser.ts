@@ -8,7 +8,6 @@ export const authenticateUserMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
-  console.log("h");
   const authorizationHeader: string | undefined = req.headers["authorization"];
 
   if (!authorizationHeader) {
