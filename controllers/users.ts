@@ -1,6 +1,6 @@
 import userSchema from "../models/userSchema";
 import { Request, Response } from "express";
-import User, { loginUser } from "../interfaces/User";
+import { Flow, JsonSchema, formRole,Edge,CustomRequest,Form,Node,NodeData,Owner,ReactFlowData,ReactFlowEdge,ReactFlowNode,TokenPayload,Tokens,User,UserToken,assignee,loginUser,query,request,submission,submissionRequests } from "../interfaces/interfaces";
 import {
   findEmail,
   findByEmail,
@@ -10,7 +10,7 @@ import {
   createUser,
 } from "../Utils/userUtils";
 import * as bcrypt from "bcryptjs";
-import Tokens, { UserToken } from "../interfaces/Tokens";
+
 import { userGet, userGetByDepartment } from "../queries/userQueries";
 
 exports.createUser = async (req: any, res: Response) => {

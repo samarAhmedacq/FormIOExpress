@@ -1,8 +1,13 @@
 import { Response } from "express";
-import Form, { assignee } from "../interfaces/form";
+import {
+  Form,
+  assignee,
+  query,
+  submission,
+  submissionRequests,
+} from "../interfaces/interfaces";
 import { GetForm } from "../Utils/formUtils";
-import submissionRequests from "../interfaces/submissionRequests";
-import submission from "../interfaces/submissions";
+
 import {
   createAssignee,
   createNewSubmission,
@@ -72,7 +77,7 @@ exports.getRequests = async (req: any, res: any) => {
   const { id, email } = req.user;
   const { submissionRequestsContainer } = req.cosmos;
 
-  const querySpec = getRequests(email, id);
+  const querySpec: query = getRequests(email, id);
 
   const { resources } = await submissionRequestsContainer.items
     .query(querySpec)

@@ -5,7 +5,14 @@ import FormSchema, {
   shareSchema,
   statusSchema,
 } from "../models/FormSchema";
-import Form, { Flow, JsonSchema, formRole } from "../interfaces/form";
+import {
+  Flow,
+  JsonSchema,
+  formRole,
+  Form,
+  query,
+  request,
+} from "../interfaces/interfaces";
 import {
   GetForm,
   checkDraftPresent,
@@ -18,7 +25,7 @@ import {
   publishCheck,
 } from "../Utils/formUtils";
 import { sendEmail } from "../Utils/userUtils";
-import request from "../interfaces/request";
+
 import {
   getAFormToPublish,
   getAllDepFormsAdmin,
@@ -77,7 +84,7 @@ exports.getForm = async (req: any, res: Response) => {
   const { id } = req.user;
 
   try {
-    const querySpec = getFormWithId(formId, id);
+    const querySpec: query = getFormWithId(formId, id);
     const { resources } = await formsContainer.items
       .query(querySpec)
       .fetchAll();
@@ -104,7 +111,7 @@ exports.getFormsByStatus = async (req: any, res: Response) => {
     return;
   }
   try {
-    const querySpec = getFormWithStatus(status, id);
+    const querySpec: query = getFormWithStatus(status, id);
 
     const { resources } = await formsContainer.items
       .query(querySpec)
@@ -136,7 +143,7 @@ exports.editForm = async (req: any, res: Response) => {
     return;
   }
 
-  const querySpec = getFormWithId(formId, id);
+  const querySpec: query = getFormWithId(formId, id);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -260,7 +267,7 @@ exports.editFlow = async (req: any, res: Response) => {
 exports.getLatestForms = async (req: any, res: Response) => {
   const { id } = req.user;
   const { formsContainer } = req.cosmos;
-  const querySpec = getLatestForms(id);
+  const querySpec: query = getLatestForms(id);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -279,7 +286,7 @@ exports.SearchFormWithCodeAndVersion = async (req: any, res: Response) => {
   const formCode: string = req.params.formCode;
   const version: number = parseInt(req.params.version);
   const { formsContainer } = req.cosmos;
-  const querySpec = getFormWithCodeAndVersion(id, formCode, version);
+  const querySpec: query = getFormWithCodeAndVersion(id, formCode, version);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -302,7 +309,7 @@ exports.shareForm = async (req: any, res: Response) => {
   if (error) {
     res.status(400).json({ error: error.message });
   }
-  const querySpec = getFormForShare(id, formId);
+  const querySpec: query = getFormForShare(id, formId);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -335,7 +342,7 @@ exports.shareForm = async (req: any, res: Response) => {
 exports.getAllFormsOfUser = async (req: any, res: Response) => {
   const { id } = req.user;
   const { formsContainer } = req.cosmos;
-  const querySpec = getAllFormsOfUser(id);
+  const querySpec: query = getAllFormsOfUser(id);
 
   const { resources }: any = await formsContainer.items
     .query(querySpec)
@@ -355,7 +362,7 @@ exports.getDepFormsAdmin = async (req: any, res: Response) => {
   const { department } = req.user;
   const { formsContainer } = req.cosmos;
   const departmentName: string = department.departmentName;
-  const querySpec = getDepFormsAdmin(departmentName);
+  const querySpec: query = getDepFormsAdmin(departmentName);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -372,7 +379,7 @@ exports.getDepFormsAdmin = async (req: any, res: Response) => {
 exports.getAllDepFormsAdmin = async (req: any, res: Response) => {
   const { formsContainer } = req.cosmos;
   const departmentName: string = req.params.departmentName;
-  const querySpec = getAllDepFormsAdmin(departmentName);
+  const querySpec: query = getAllDepFormsAdmin(departmentName);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -390,7 +397,7 @@ exports.getFormsMember = async (req: any, res: Response) => {
   const { department } = req.user;
   const { formsContainer } = req.cosmos;
   const departmentName: string = department.departmentName;
-  const querySpec = getAllDepFormsAdmin(departmentName);
+  const querySpec: query = getAllDepFormsAdmin(departmentName);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
@@ -409,7 +416,7 @@ exports.publishForm = async (req: any, res: Response) => {
   const { id, name, email } = req.user;
   const formId: string = req.params.formId;
 
-  const querySpec = getAFormToPublish(id, formId);
+  const querySpec: query = getAFormToPublish(id, formId);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 

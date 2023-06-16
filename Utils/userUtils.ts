@@ -1,13 +1,12 @@
 import jwt from "jsonwebtoken";
 import * as bcrypt from "bcryptjs";
-import Tokens from "../interfaces/Tokens";
 import { Response } from "express";
-import User from "../interfaces/User";
+import { Tokens, User, query } from "../interfaces/interfaces";
 const nodemailer = require("nodemailer");
 export const findEmail = async (req: any, email: string) => {
   const { usersContainer } = req.cosmos;
 
-  const querySpec = {
+  const querySpec: query = {
     query: "SELECT c.email FROM c",
   };
   const { resources } = await usersContainer.items.query(querySpec).fetchAll();
@@ -16,7 +15,7 @@ export const findEmail = async (req: any, email: string) => {
 
 export const findByEmail = async (req: any, email: string) => {
   const { usersContainer } = req.cosmos;
-  const querySpec = {
+  const querySpec: query = {
     query: "SELECT * FROM users u WHERE u.email = @email",
     parameters: [{ name: "@email", value: email }],
   };
@@ -79,7 +78,7 @@ const hashData = async (data: string) => {
 
 export const getUser = async (req: any, res: Response, userId: string) => {
   const { usersContainer } = req.cosmos;
-  const querySpec = {
+  const querySpec: query = {
     query: "SELECT * FROM c WHERE c.id = @id",
     parameters: [
       {

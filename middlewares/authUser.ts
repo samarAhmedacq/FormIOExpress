@@ -1,7 +1,6 @@
 import { Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { TokenPayload, CustomRequest } from "../interfaces/authInterface";
-import { Owner } from "../interfaces/form";
+import { CustomRequest, Owner, TokenPayload } from "../interfaces/interfaces";
 
 export const authenticateUserMiddleware = (
   req: CustomRequest,

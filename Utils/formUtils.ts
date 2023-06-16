@@ -1,5 +1,10 @@
-import Form, { Owner, formRole } from "../interfaces/form";
-import { GetPublishOrCloneRequest, checkCode, checkDraft, checkPublish } from "../queries/formQueries";
+import { formRole, Form, Owner, query } from "../interfaces/interfaces";
+import {
+  GetPublishOrCloneRequest,
+  checkCode,
+  checkDraft,
+  checkPublish,
+} from "../queries/formQueries";
 
 export const checkFormCode = async (
   req: any,
@@ -8,7 +13,7 @@ export const checkFormCode = async (
 ): Promise<boolean> => {
   const { formsContainer } = req.cosmos;
 
-  const querySpec = checkCode(codeToBeChecked!, ownerId);
+  const querySpec: query = checkCode(codeToBeChecked!, ownerId);
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
   if (resources.length > 0) {
@@ -54,7 +59,7 @@ export const checkDraftPresent = async (
 ) => {
   const { formsContainer } = req.cosmos;
   try {
-    const querySpec = checkDraft(codeToBeChecked, ownerId);
+    const querySpec: query = checkDraft(codeToBeChecked, ownerId);
 
     const { resources } = await formsContainer.items
       .query(querySpec)
@@ -96,7 +101,7 @@ export const publishCheck = async (
   idToBeChecked: string
 ) => {
   const { formsContainer } = req.cosmos;
-  const querySpec = checkPublish(codeToBeChecked,idToBeChecked)
+  const querySpec: query = checkPublish(codeToBeChecked, idToBeChecked);
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
   if (resources.length > 0) {
     const form2: Form = resources[0];
@@ -113,8 +118,11 @@ export const getRequest = async (
   type: string
 ) => {
   const { requestsContainer } = req.cosmos;
-  const querySpec = GetPublishOrCloneRequest(verificationCode,formId,type)
-
+  const querySpec: query = GetPublishOrCloneRequest(
+    verificationCode,
+    formId,
+    type
+  );
 
   const { resources } = await requestsContainer.items
     .query(querySpec)

@@ -1,9 +1,13 @@
-import Form, { JsonSchema, assignee } from "../interfaces/form";
-import submissionRequests, {
+import {
+  JsonSchema,
+  Form,
   ReactFlowEdge,
   ReactFlowNode,
-} from "../interfaces/submissionRequests";
-import submission from "../interfaces/submissions";
+  assignee,
+  query,
+  submission,
+  submissionRequests,
+} from "../interfaces/interfaces";
 import { RequestWithId, submissionGet } from "../queries/requestQueries";
 
 export const updateCurrentNodeData = async (
@@ -75,7 +79,7 @@ export const getSubmission = async (
   submissionId: string
 ) => {
   const { submissionsContainer } = req.cosmos;
-  const querySpec = submissionGet(submissionId);
+  const querySpec: query = submissionGet(submissionId);
 
   const { resources } = await submissionsContainer.items
     .query(querySpec)
@@ -97,7 +101,7 @@ export const getRequestWithId = async (
 ) => {
   const { submissionRequestsContainer } = req.cosmos;
   try {
-    const querySpec = RequestWithId(requestId);
+    const querySpec: query = RequestWithId(requestId);
 
     const { resources } = await submissionRequestsContainer.items
       .query(querySpec)
