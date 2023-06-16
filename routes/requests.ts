@@ -4,8 +4,7 @@ const {
   getRequests,
   requestResponse,
 } = require("../controllers/requests");
-import { authenticateUserMiddleware } from "../middlewares/authUser";
-import { validateUserRole } from "../middlewares/validateUserRole";
+import { authenticateUserMiddleware,validateUserRole } from "../middleware/middleware";
 
 const requestRoutes = express.Router();
 

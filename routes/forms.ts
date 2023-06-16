@@ -19,8 +19,8 @@ const {
   cloneForm,
   verifyClone,
 } = require("../controllers/forms");
-import { authenticateUserMiddleware } from "../middlewares/authUser";
-import { validateUserRole } from "../middlewares/validateUserRole";
+import { authenticateUserMiddleware,validateUserRole } from "../middleware/middleware";
+
 const formRoutes = express.Router();
 formRoutes
   .route("/createForm")

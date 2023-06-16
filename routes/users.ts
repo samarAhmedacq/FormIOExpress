@@ -7,9 +7,11 @@ const {
   RefreshTokens,
   deleteUser,
 } = require("../controllers/users");
-import { authenticateUserMiddleware } from "../middlewares/authUser";
-import { authRefreshToken } from "../middlewares/authRefresh";
-import { validateUserRole } from "../middlewares/validateUserRole";
+import {
+  authenticateUserMiddleware,
+  validateUserRole,
+  authRefreshToken,
+} from "../middleware/middleware";
 const userRoutes = express.Router();
 userRoutes.route("/signIn").post(signIn);
 userRoutes.route("/createUser").post(createUser);
