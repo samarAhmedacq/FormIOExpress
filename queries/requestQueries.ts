@@ -10,23 +10,21 @@ export const getRequests = (email: string, id: string) => {
 };
 
 export const submissionGet = (submissionId: string) => {
-    return {
-        query:
-        "SELECT c.id, c.jsonSchema, c.submitData FROM c WHERE c.id = @submissionId",
-      parameters: [{ name: "@submissionId", value: submissionId }],
-    };
+  return {
+    query:
+      "SELECT c.id, c.jsonSchema, c.submitData FROM c WHERE c.id = @submissionId",
+    parameters: [{ name: "@submissionId", value: submissionId }],
   };
+};
 
-  export const RequestWithId = (requestId: string) => {
-    return {
-        query: "SELECT * FROM c WHERE c.id = @id",
-        parameters: [
-          {
-            name: "@id",
-            value: requestId,
-          },
-        ],
-    };
+export const RequestWithId = (requestId: string) => {
+  return {
+    query: "SELECT * FROM c WHERE c.id = @id",
+    parameters: [
+      {
+        name: "@id",
+        value: requestId,
+      },
+    ],
   };
-
-
+};

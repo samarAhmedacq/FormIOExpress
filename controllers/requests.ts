@@ -200,3 +200,22 @@ exports.requestResponse = async (req: any, res: any) => {
     return;
   }
 };
+
+exports.getSubmittedRequests = async (req: any, res: any) => {
+  const { id } = req.user;
+  const { submissionRequestsContainer } = req.cosmos;
+  const query = `SELECT * FROM c WHERE c.SubmittedBy.id = '${id}'`;
+
+  const { resources } = await submissionRequestsContainer.items
+    .query(query)
+    .fetchAll();
+  if (resources.length) {
+    const request = await processResources(resources, req, res);
+
+    res.status(200).json({ resources: request });
+    return;
+  } else {
+    res.status(404).json({ error: "no request submitted" });
+    return;
+  }
+};

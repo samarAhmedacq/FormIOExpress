@@ -206,7 +206,6 @@ exports.createFlow = async (req: any, res: Response) => {
   const form: Form | undefined = await GetForm(req, res, formId);
   if (!form) {
     res.status(404).json({ error: "there is no form with given id" });
-
     return;
   }
 
@@ -323,18 +322,27 @@ exports.shareForm = async (req: any, res: Response) => {
         res
           .status(400)
           .json({ error: "Form is already shared with this User" });
+          return;
       }
-      return;
+      
     });
     roles.push(shareWith);
     form.roles = roles;
     await formsContainer.item(form.id, form.id).replace(form);
-    // await sendEmail(
-    //   shareWith.email,
-    //   owner.email,
-    //   `${owner.email} has shared form with ${shareWith.email}`
-    // );
+    await sendEmail(
+     
+      shareWith.email,
+      owner.email,
+      `${owner.email} has shared form with ${shareWith.email}`
+    );
     res.status(200).json({ form });
+    return;
+  }
+  else
+  {
+    res
+    .status(404)
+    .json({ error: "Form Not Found" });
     return;
   }
 };

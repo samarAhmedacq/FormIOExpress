@@ -3,8 +3,12 @@ const {
   createRequest,
   getRequests,
   requestResponse,
+  getSubmittedRequests,
 } = require("../controllers/requests");
-import { authenticateUserMiddleware,validateUserRole } from "../middleware/middleware";
+import {
+  authenticateUserMiddleware,
+  validateUserRole,
+} from "../middleware/middleware";
 
 const requestRoutes = express.Router();
 
@@ -15,6 +19,10 @@ requestRoutes
 requestRoutes
   .route("/getRequests")
   .get(authenticateUserMiddleware, validateUserRole, getRequests);
+
+requestRoutes
+  .route("/getSubmittedRequests")
+  .get(authenticateUserMiddleware, getSubmittedRequests);
 
 requestRoutes
   .route("/requestResponse/:requestId/:response")

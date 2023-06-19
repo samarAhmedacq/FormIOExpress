@@ -31,11 +31,8 @@ export const GetForm = async (
   const { formsContainer } = req.cosmos;
   try {
     const { resource } = await formsContainer.item(formID, formID).read();
-    const form: Form | undefined = resource;
-    if (!form) {
-      res.status(404).json({ error: "Form Not found" });
-      return undefined;
-    }
+    const form: any = resource;
+
     return form;
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });

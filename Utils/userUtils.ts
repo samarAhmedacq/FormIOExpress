@@ -3,7 +3,7 @@ import * as bcrypt from "bcryptjs";
 import { Response } from "express";
 import { Tokens, User, query } from "../interfaces/interfaces";
 const nodemailer = require("nodemailer");
-export const findEmail = async (req: any, email: string) => {
+export const findEmail = async (req: any, email: string): Promise<string> => {
   const { usersContainer } = req.cosmos;
 
   const querySpec: query = {
@@ -13,7 +13,7 @@ export const findEmail = async (req: any, email: string) => {
   return resources.some((item: any) => item.email === email);
 };
 
-export const findByEmail = async (req: any, email: string) => {
+export const findByEmail = async (req: any, email: string): Promise<User> => {
   const { usersContainer } = req.cosmos;
   const querySpec: query = {
     query: "SELECT * FROM users u WHERE u.email = @email",
