@@ -73,7 +73,6 @@ exports.createForm = async (req: any, res: Response) => {
   form.version = 1;
 
   await formsContainer.items.create(form);
-
   res.status(201).json({ form });
   return;
 };
@@ -83,20 +82,16 @@ exports.getForm = async (req: any, res: Response) => {
   const { formsContainer } = req.cosmos;
   const { id } = req.user;
 
-  
-    const querySpec: query = getFormWithId(formId, id);
-    const { resources } = await formsContainer.items
-      .query(querySpec)
-      .fetchAll();
-    if (resources.length > 0) {
-      const form: Form = resources[0];
-      res.status(200).json({ form });
-      return;
-    } else {
-      res.status(404).json({ error: "Form Not found" });
-      return;
-    }
- 
+  const querySpec: query = getFormWithId(formId, id);
+  const { resources } = await formsContainer.items.query(querySpec).fetchAll();
+  if (resources.length > 0) {
+    const form: Form = resources[0];
+    res.status(200).json({ form });
+    return;
+  } else {
+    res.status(404).json({ error: "Form Not found" });
+    return;
+  }
 };
 
 exports.getFormsByStatus = async (req: any, res: Response) => {
@@ -108,22 +103,19 @@ exports.getFormsByStatus = async (req: any, res: Response) => {
     res.status(400).json({ error: error.message });
     return;
   }
-  
-    const querySpec: query = getFormWithStatus(status, id);
 
-    const { resources } = await formsContainer.items
-      .query(querySpec)
-      .fetchAll();
+  const querySpec: query = getFormWithStatus(status, id);
 
-    if (resources.length) {
-      const forms: Form[] = resources;
-      res.status(200).json({ forms });
-      return;
-    } else {
-      res.status(404).json({ error: "Form Not Found" });
-      return;
-    }
+  const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
+  if (resources.length) {
+    const forms: Form[] = resources;
+    res.status(200).json({ forms });
+    return;
+  } else {
+    res.status(404).json({ error: "Form Not Found" });
+    return;
+  }
 };
 
 exports.editForm = async (req: any, res: Response) => {
@@ -150,6 +142,28 @@ exports.editForm = async (req: any, res: Response) => {
     await formsContainer.item(form.id, form.id).replace(form);
 
     res.status(200).json({ form });
+    return;
+  } else {
+    res.status(404).json({
+      error: "there is no form with this id or the form is not in draft phase",
+    });
+    return;
+  }
+};
+
+exports.deleteForm = async (req: any, res: Response) => {
+  const formId: string = req.params.formId;
+  const { id } = req.user;
+  const { formsContainer } = req.cosmos;
+  const querySpec: query = getFormWithId(formId, id);
+  const { resources } = await formsContainer.items.query(querySpec).fetchAll();
+
+  if (resources.length > 0) {
+    const form = resources[0];
+
+    await formsContainer.item(form.id, form.id).delete();
+
+    res.status(200).json({ response: "The Form is deleted" });
     return;
   } else {
     res.status(404).json({
@@ -189,7 +203,7 @@ exports.createDraft = async (req: any, res: Response) => {
     }
   } else {
     res.status(404).json({
-      error: "there is no form with this id or the form is not in draft phase",
+      error: "there is no form with this id",
     });
     return;
   }
@@ -238,7 +252,6 @@ exports.editFlow = async (req: any, res: Response) => {
   const form: Form | undefined = await GetForm(req, res, formId);
   if (!form) {
     res.status(404).json({ error: "there is no form with given id" });
-
     return;
   }
   const { formsContainer } = req.cosmos;
@@ -304,6 +317,7 @@ exports.shareForm = async (req: any, res: Response) => {
   const { error } = shareSchema.validate(shareWith);
   if (error) {
     res.status(400).json({ error: error.message });
+    return;
   }
   const querySpec: query = getFormForShare(id, formId);
 
@@ -319,27 +333,22 @@ exports.shareForm = async (req: any, res: Response) => {
         res
           .status(400)
           .json({ error: "Form is already shared with this User" });
-          return;
+        return;
       }
-      
     });
     roles.push(shareWith);
     form.roles = roles;
     await formsContainer.item(form.id, form.id).replace(form);
     // await sendEmail(
-     
+
     //   shareWith.email,
     //   owner.email,
     //   `${owner.email} has shared form with ${shareWith.email}`
     // );
     res.status(200).json({ form });
     return;
-  }
-  else
-  {
-    res
-    .status(404)
-    .json({ error: "Form Not Found" });
+  } else {
+    res.status(404).json({ error: "Form Not Found" });
     return;
   }
 };
@@ -532,44 +541,43 @@ exports.cloneForm = async (req: any, res: Response) => {
   const form: Form | undefined = await GetForm(req, res, formId);
   if (!form) {
     res.status(400).json({ error: "there is no form with given id" });
-
     return;
   }
   const ownerEmail: string = await getEmailOfOwner(form.roles);
-  
-    if (owner.email != ownerEmail) {
-      const resource: request = await createRequest(
-        req,
-        formId,
-        owner.id,
-        owner.name,
-        owner.email,
-        "pending",
-        "clone"
-      );
 
-      // await formUtils.sendVerificationEmail(
-      //   "samarahmedfast5@gmail.com",
-      //   resource.id,
-      //   owner,
-      //   formID,
-      //   form.formName
-      // );
+  if (owner.email != ownerEmail) {
+    const resource: request = await createRequest(
+      req,
+      formId,
+      owner.id,
+      owner.name,
+      owner.email,
+      "pending",
+      "clone"
+    );
 
-      return resource;
-    }
-    let roles = [];
-    roles.push(owner);
-    let NewForm = form;
-    NewForm.id = "";
-    NewForm.roles = roles;
-    NewForm.status = "draft";
-    NewForm.version = 1;
+    // await formUtils.sendVerificationEmail(
+    //   "samarahmedfast5@gmail.com",
+    //   resource.id,
+    //   owner,
+    //   formID,
+    //   form.formName
+    // );
 
-    const { resource } = await formsContainer.items.create(NewForm);
-    const createdForm: Form = resource;
-    res.status(201).json({ createdForm });
+    return resource;
+  }
+  let roles = [];
+  roles.push(owner);
+  let NewForm = form;
+  NewForm.id = "";
+  NewForm.roles = roles;
+  NewForm.status = "draft";
+  NewForm.version = 1;
 
+  const { resource } = await formsContainer.items.create(NewForm);
+  const createdForm: Form = resource;
+  res.status(201).json({ createdForm });
+  return;
 };
 
 exports.rejectCloneForm = async (req: any, res: Response) => {
@@ -582,50 +590,47 @@ exports.verifyClone = async (req: any, res: Response) => {
   const { formsContainer, requestsContainer } = req.cosmos;
   const formId: string = req.params.formId;
   const verificationCode: string = req.params.verificationCode;
-  
-    const resource = await getRequest(
-      req,
-      res,
-      formId,
-      verificationCode,
-      "clone"
-    );
-    if (resource) {
-      if (resource.status != "pending") {
-        res
-          .status(400)
-          .json({ error: "you have already accepted or rejected the request" });
-        return;
-      }
 
-      const form: Form | undefined = await GetForm(req, res, formId);
-      if (!form) {
-        res.status(400).json({ error: "there is no form with given id" });
-
-        return;
-      }
-      let roles: formRole[] = await createOwner(resource);
-
-      let NewForm: Form = form;
-      NewForm.id = "";
-      NewForm.roles = roles;
-      NewForm.status = "draft";
-      NewForm.version = 1;
-
-      await formsContainer.items.create(NewForm);
-      // await formUtils.sendAcceptanceEmail(resource.email, "clone");
-      const UpdatedResource = resource;
-      UpdatedResource.status = "accepted";
-      await requestsContainer
-        .item(resource.id, resource.id)
-        .replace(UpdatedResource);
+  const resource = await getRequest(
+    req,
+    res,
+    formId,
+    verificationCode,
+    "clone"
+  );
+  if (resource) {
+    if (resource.status != "pending") {
       res
-        .status(200)
-        .json({ response: `${resource.name} has cloned your Form` });
-      return;
-    } else {
-      res.status(404).json({ error: "Request Not found" });
+        .status(400)
+        .json({ error: "you have already accepted or rejected the request" });
       return;
     }
 
+    const form: Form | undefined = await GetForm(req, res, formId);
+    if (!form) {
+      res.status(400).json({ error: "there is no form with given id" });
+
+      return;
+    }
+    let roles: formRole[] = await createOwner(resource);
+
+    let NewForm: Form = form;
+    NewForm.id = "";
+    NewForm.roles = roles;
+    NewForm.status = "draft";
+    NewForm.version = 1;
+
+    await formsContainer.items.create(NewForm);
+    // await formUtils.sendAcceptanceEmail(resource.email, "clone");
+    const UpdatedResource = resource;
+    UpdatedResource.status = "accepted";
+    await requestsContainer
+      .item(resource.id, resource.id)
+      .replace(UpdatedResource);
+    res.status(200).json({ response: `${resource.name} has cloned your Form` });
+    return;
+  } else {
+    res.status(404).json({ error: "Request Not found" });
+    return;
+  }
 };

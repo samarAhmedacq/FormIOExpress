@@ -18,6 +18,7 @@ const {
   publishContributorForm,
   cloneForm,
   verifyClone,
+  deleteForm
 } = require("../controllers/forms");
 import { authenticateUserMiddleware,validateUserRole } from "../middleware/middleware";
 
@@ -25,6 +26,9 @@ const formRoutes = express.Router();
 formRoutes
   .route("/createForm")
   .post(authenticateUserMiddleware, validateUserRole, createForm);
+  formRoutes
+  .route("/deleteForm/:formId")
+  .delete(authenticateUserMiddleware, validateUserRole, deleteForm);
 
 formRoutes
   .route("/getForm/:formId")
