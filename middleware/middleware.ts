@@ -49,7 +49,7 @@ export const authRefreshToken = (
 export const validateUserRole = (req: any, res: Response, next: NextFunction) => {
     const { role, department } = req.user;
     if (role !== "super admin" && department.departmentRole !== "admin") {
-      res.status(401).json({ error: "This Route is Admin Protected!" });
+      res.status(403).json({ response: "This Route is Admin Protected!" });
       return;
     }
     next();
@@ -66,13 +66,13 @@ export const authenticateUserMiddleware = (
   const authorizationHeader: string | undefined = req.headers["authorization"];
 
   if (!authorizationHeader) {
-    res.status(401).json({ response: "Unauthorized" });
+    res.status(401).json({ error: "Unauthorized" });
     return;
   }
   const token: string | undefined = authorizationHeader.split(" ")[1];
 
   if (!token) {
-    res.status(401).json({ response: "Unauthorized" });
+    res.status(401).json({ error: "Unauthorized" });
     return;
   }
 
@@ -83,7 +83,7 @@ export const authenticateUserMiddleware = (
     ) as TokenPayload | undefined;
 
     if (!decodedToken) {
-      res.status(403).json({ response: "Forbidden" });
+      res.status(401).json({ error: "Forbidden" });
       return;
     }
 
@@ -109,8 +109,8 @@ export const authenticateUserMiddleware = (
       owner,
     };
     next();
-  } catch (error) {
-    res.status(403).json({ response: "Forbidden" });
+  } catch (error:any) {
+    res.status(401).json({ error: error.message });
     return;
   }
 };
