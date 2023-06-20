@@ -40,7 +40,6 @@ export const authRefreshToken = (
 
     next();
   } catch (error) {
-    console.log("in error");
     res.status(403).json({ response: "Forbidden" });
     return;
   }
