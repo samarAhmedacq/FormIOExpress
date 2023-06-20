@@ -84,14 +84,10 @@ exports.getForm = async (req: any, res: Response) => {
 
   const querySpec: query = getFormWithId(formId, id);
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
-  if (resources.length > 0) {
-    const form: Form = resources[0];
-    res.status(200).json({ form });
-    return;
-  } else {
-    res.status(404).json({ error: "Form Not found" });
-    return;
-  }
+
+  const form: Form = resources[0];
+  res.status(200).json({ result: form });
+  return;
 };
 
 exports.getFormsByStatus = async (req: any, res: Response) => {
@@ -108,14 +104,9 @@ exports.getFormsByStatus = async (req: any, res: Response) => {
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
-  if (resources.length) {
-    const forms: Form[] = resources;
-    res.status(200).json({ forms });
-    return;
-  } else {
-    res.status(404).json({ error: "Form Not Found" });
-    return;
-  }
+  const forms: Form[] = resources;
+  res.status(200).json({ result: forms });
+  return;
 };
 
 exports.editForm = async (req: any, res: Response) => {
@@ -280,14 +271,9 @@ exports.getLatestForms = async (req: any, res: Response) => {
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
-  if (resources.length) {
-    const forms: Form[] = resources;
-    res.status(200).json({ forms });
-    return;
-  } else {
-    res.status(404).json({ error: "there is no form present" });
-    return;
-  }
+  const forms: Form[] = resources;
+  res.status(200).json({ result: forms });
+  return;
 };
 
 exports.SearchFormWithCodeAndVersion = async (req: any, res: Response) => {
@@ -304,7 +290,9 @@ exports.SearchFormWithCodeAndVersion = async (req: any, res: Response) => {
     res.status(200).json({ form });
     return;
   } else {
-    res.status(404).json({ error: "there is no form present" });
+    res
+      .status(404)
+      .json({ error: "there is no form present with this code and version" });
     return;
   }
 };
@@ -362,14 +350,9 @@ exports.getAllFormsOfUser = async (req: any, res: Response) => {
     .query(querySpec)
     .fetchAll();
 
-  if (resources.length) {
-    const forms: Form[] = resources;
-    res.status(200).json({ forms });
-    return;
-  } else {
-    res.status(404).json({ error: "there is no form present" });
-    return;
-  }
+  const forms: Form[] = resources;
+  res.status(200).json({ result: forms });
+  return;
 };
 
 exports.getDepFormsAdmin = async (req: any, res: Response) => {
@@ -380,14 +363,9 @@ exports.getDepFormsAdmin = async (req: any, res: Response) => {
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
-  if (resources.length) {
-    const forms: Form[] = resources;
-    res.status(200).json({ forms });
-    return;
-  } else {
-    res.status(404).json({ error: "there is no form present" });
-    return;
-  }
+  const forms: Form[] = resources;
+  res.status(200).json({ result: forms });
+  return;
 };
 
 exports.getAllDepFormsAdmin = async (req: any, res: Response) => {
@@ -397,14 +375,9 @@ exports.getAllDepFormsAdmin = async (req: any, res: Response) => {
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
-  if (resources.length) {
-    const forms: Form[] = resources;
-    res.status(200).json({ forms });
-    return;
-  } else {
-    res.status(404).json({ error: "there is no form present" });
-    return;
-  }
+  const forms: Form[] = resources;
+  res.status(200).json({ result: forms });
+  return;
 };
 
 exports.getFormsMember = async (req: any, res: Response) => {
@@ -415,14 +388,11 @@ exports.getFormsMember = async (req: any, res: Response) => {
 
   const { resources } = await formsContainer.items.query(querySpec).fetchAll();
 
-  if (resources.length) {
+ 
     const forms: Form[] = resources;
-    res.status(200).json({ forms });
+    res.status(200).json({ result:forms });
     return;
-  } else {
-    res.status(404).json({ error: "there is no form present" });
-    return;
-  }
+
 };
 
 exports.publishForm = async (req: any, res: Response) => {

@@ -76,14 +76,9 @@ exports.getAllUsers = async (req: any, res: Response) => {
 
   const { resources } = await usersContainer.items.query(querySpec).fetchAll();
 
-  if (resources.length > 0) {
-    const users: User[] = resources;
-    res.status(200).json({ users: users });
-    return;
-  } else {
-    res.status(404).json({ error: "No User Found" });
-    return;
-  }
+  const users: User[] = resources;
+  res.status(200).json({ users: users });
+  return;
 };
 
 exports.getAllUsersOfDepartment = async (req: any, res: Response) => {
@@ -94,14 +89,9 @@ exports.getAllUsersOfDepartment = async (req: any, res: Response) => {
 
   const { resources } = await usersContainer.items.query(querySpec).fetchAll();
 
-  if (resources.length > 0) {
-    const users: User[] = resources;
-    res.status(200).json({ users: users });
-    return;
-  } else {
-    res.status(404).json({ error: "No User Found" });
-    return;
-  }
+  const users: User[] = resources;
+  res.status(200).json({ users: users });
+  return;
 };
 
 exports.RefreshTokens = async (req: any, res: Response) => {

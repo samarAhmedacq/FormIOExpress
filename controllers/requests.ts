@@ -83,15 +83,10 @@ exports.getRequests = async (req: any, res: any) => {
     .query(querySpec)
     .fetchAll();
 
-  if (resources.length) {
-    const request = await processResources(resources, req, res);
+  const request = await processResources(resources, req, res);
 
-    res.status(200).json({ resources: request });
-    return;
-  } else {
-    res.status(404).json({ error: "no request received" });
-    return;
-  }
+  res.status(200).json({ requests: request });
+  return;
 };
 
 exports.requestResponse = async (req: any, res: any) => {
@@ -209,13 +204,9 @@ exports.getSubmittedRequests = async (req: any, res: any) => {
   const { resources } = await submissionRequestsContainer.items
     .query(query)
     .fetchAll();
-  if (resources.length) {
-    const request = await processResources(resources, req, res);
 
-    res.status(200).json({ resources: request });
-    return;
-  } else {
-    res.status(404).json({ error: "no request submitted" });
-    return;
-  }
+  const request = await processResources(resources, req, res);
+
+  res.status(200).json({ requests: request });
+  return;
 };
